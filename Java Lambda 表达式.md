@@ -1,5 +1,6 @@
 ##Java Lambda 表达式
-[翻译]原文链接[http://tutorials.jenkov.com/java/lambda-expressions.html#single-method-interface](http://tutorials.jenkov.com/java/lambda-expressions.html#single-method-interface)
+>[翻译]原文链接[http://tutorials.jenkov.com/java/lambda-expressions.html#single-method-interface](http://tutorials.jenkov.com/java/lambda-expressions.html#single-method-interface)
+如有侵权，请告知。
 
 - Java Lambdas和单一方法接口
     - 匹配Lambda到接口
@@ -238,6 +239,126 @@ public class EventConsumerImpl {
     }
 }
 ```
+注意lambda表达式内对this.name的引用。这就是访问封闭的EventConsumerImpl对象的name实例变量。甚至在获取到该变量以后，该变量的值发生变化，,该值同样会在lambda表达式内得到体现。
+this其语义实际上是Java lambdas与接口的匿名实现不同的方面之一。匿名接口实现可以有自己的实例变量，这些变量通过this引用。但是，lambda不能有自己的实例变量，所以这总是指向封闭对象。
+注意：事件消费者的上述设计并不是特别优雅。我这样做只是为了说明关于实例变量的访问。
+#### 访问静态变量
+Java lambda表达式还可以访问静态变量。这并不奇怪，因为静态变量可以从Java应用程序中的任何地方访问，只要可以访问静态变量（packaged或者public修饰的）。
+这是一个创建lambda的示例类，它引用lambda体内部的静态变量：
+```java
+public class EventConsumerImpl {
+    private static String someStaticVar = "Some text";
 
+    public void attach(MyEventProducer eventProducer){
+        eventProducer.listen(e -> {
+            System.out.println(someStaticVar);
+        });
+    }
+}
+```
+在lambda访问静态变量之后，也允许更改静态变量的值。
+同样，上面的类设计有点荒谬。不要过多考虑这个问题。该类主要用于向您显示lambda可以访问静态变量。
+###lambda中关于方法调用
+在所有lambda表达式都是使用传递给lambda的参数调用另一个方法的情况下，Java lambda实现提供了一种表达方法调用的更短方式。首先，这是一个示例单功能接口：
+```java
+public interface MyPrinter{
+    public void print(String s);
+}
+```
+以下是创建实现MyPrinter接口的Java lambda实例的示例：
+```java
+MyPrinter myPrinter = (s) -> { System.out.println(s); };
+```
+因为lambda体只包含一个语句，所以我们实际上可以省略括号{}括号。此外，由于lambda方法只有一个参数，我们可以省略参数周围的enclosing（）括号。以下是简化的lambda声明：
+```java
+MyPrinter myPrinter = s -> System.out.println(s);
+```
+由于所有lambda body都将字符串参数转发给System.out.println（）方法，因此我们可以用方法引用替换上面的lambda声明。以下是lambda方法引用的样式：
+```java
+MyPrinter myPrinter = System.out::println;
+```
+注意双冒号::。这些符号通知Java编译器这是一个方法引用。引用的方法是双冒号之后的方法。无论哪个类或对象拥有引用的方法都来自双冒号。
+你可以引用以下类型的方法：
+- 静态方法
+- 成员方法
+- 成员方法
+- 构造方法
+####引用静态方法
+最简单的引用方法是静态方法。这是第一个单一功能接口的示例：
+```java
+public interface Finder {
+    public int find(String s1, String s2);
+}
+```
+这是一个我们想要创建方法引用的静态方法
+```java
+public class MyClass{
+    public static int doFind(String s1, String s2){
+        return s1.lastIndexOf(s2);
+    }
+}
+```
+最后这里是一个引用静态方法的Java lambda表达式：
+```java
+Finder finder = MyClass::doFind;
+```
+由于Finder.find（）和MyClass.doFind（）方法的参数匹配，因此可以创建一个实现Finder.find（）并引用MyClass.doFind（）方法的lambda表达式。
+####引用有参数的方法
+您还可以将其中一个参数的方法引用到lambda。想象一下单个函数接口，如下所示：
+```java
+public interface Finder {
+    public int find(String s1, String s2);
+}
+```
+该接口旨在表示能够搜索s1以发生s2的组件。下面是一个Java lambda表达式的示例，它调用String.indexOf（）来搜索：
+```java
+Finder finder = String::indexOf;
+```
+等同于以下的lambda表达式
+```java
+Finder finder = (s1, s2) -> s1.indexOf(s2);
+```
+请注意快捷方式版本如何引用单个方法。Java编译器将尝试将引用的方法与第一个参数类型匹配，使用第二个参数类型作为引用方法的参数。
+####实例方法引用
+第三，还可以从lambda定义引用实例方法。首先，让我们看一下单个方法接口定义：
+```java
+public interface Deserializer {
+    public int deserialize(String v1);
+}
+```
+此接口表示能够将String“反序列化”为int的组件。现在看看这个StringConverter类
+```java
+public class StringConverter {
+    public int convertToInt(String v1){
+        return Integer.valueOf(v1);
+    }
+}
+```
+convertToInt（）方法与Deserializer deserialize（）方法的deserialize（）方法具有相同的特征。因此，我们可以创建一个StringConverter实例并从Java lambda表达式引用它的convertToInt（）方法，如下所示：
+```java
+StringConverter stringConverter = new StringConverter();
+
+Deserializer des = stringConverter::convertToInt;
+```
+由两行中的第二行创建的lambda表达式引用在第一行上创建的StringConverter实例的convertToInt方法。
+####引用构造方法
+最后，可以引用类的构造函数。您可以通过编写类名后跟:: new来实现，如下所示：
+```java
+MyClass::new
+```
+要了解如何将构造函数用作lambda表达式，请查看此接口定义：
+```java
+public interface Factory {
+    public String create(char[] val);
+}
+```
+此接口的create（）方法与String类中的一个构造函数的签名匹配。因此，此构造函数可用作lambda。以下是该示例的示例：
+```java
+Factory factory = String::new;
+```
+与以下的lamb表达式等同
+```java
+Factory factory = chars -> new String(chars);
+```
 
 
