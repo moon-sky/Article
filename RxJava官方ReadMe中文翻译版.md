@@ -102,8 +102,148 @@ Flowable<Integer> flow = Flowable.range(1, 5)
 flow.subscribe(System.out::println)
 ```
 这是触发订阅的时间（请参阅doOnSubscribe）。某些来源在此状态下阻塞或开始分发item。
+##### 运行时
+这是流主动发出item，错误或完成信号时的状态：
+```java
+Observable.create(emitter -> {
+     while (!emitter.isDisposed()) {
+         long time = System.currentTimeMillis();
+         emitter.onNext(time);
+         if (time % 2 != 0) {
+             emitter.onError(new IllegalStateException("Odd millisecond!"));
+             break;
+         }
+     }
+})
+.subscribe(System.out::println, Throwable::printStackTrace);
+```
+实际上，这是在上面给出的例子的主体执行的时候。
+
+##### 简单的后台计算
+RxJava的一个常见用例是在后台线程上运行一些计算，网络请求并在UI线程上显示结果（或错误）：
+```java
+import io.reactivex.schedulers.Schedulers;
+
+Flowable.fromCallable(() -> {
+    Thread.sleep(1000); //  imitate expensive computation
+    return "Done";
+})
+  .subscribeOn(Schedulers.io())
+  .observeOn(Schedulers.single())
+  .subscribe(System.out::println, Throwable::printStackTrace);
+
+Thread.sleep(2000); // <--- wait for the flow to finish
+```
+这种链式方法称为流畅的API，类似于构建器模式。但是，RxJava的响应类型是不可变的;每个方法调用都返回一个带有添加行为的新Flowable。为了说明，该示例可以重写如下：
+```java
+Flowable<String> source = Flowable.fromCallable(() -> {
+    Thread.sleep(1000); //  imitate expensive computation
+    return "Done";
+});
+
+Flowable<String> runBackground = source.subscribeOn(Schedulers.io());
+
+Flowable<String> showForeground = runBackground.observeOn(Schedulers.single());
+
+showForeground.subscribe(System.out::println, Throwable::printStackTrace);
+
+Thread.sleep(2000);
+```
+
+通常，您可以通过subscribeOn将计算或阻止IO移动到其他线程。数据准备就绪后，您可以确保通过observeOn在前台或GUI线程上处理它们。
+
+##### 调度程序
+
+RxJava运算符不能直接使用Threads或ExecutorServices，而是使用所谓的调度程序来抽象统一API背后的并发源。RxJava 2具有几个可通过Scheduler实用程序类访问的标准调度程序。
+
+- Schedulers.computation（）：在后台运行固定数量的专用线程上的计算密集型工作。大多数异步操作符使用它作为其默认调度程序。
+- Schedulers.io（）：在动态变化的线程集上运行类I / O或阻塞操作。
+- Schedulers.single（）：以顺序和FIFO方式在单个线程上运行。
+- Schedulers.trampoline（）：在其中一个参与线程中以顺序和FIFO方式运行，通常用于测试目的。
+
+这些可在所有JVM平台上使用，但某些特定平台（如Android）具有自己的典型调度程序：AndroidSchedulers.mainThread（），SwingScheduler.instance（）或JavaFXSchedulers.gui（）。
+
+此外，还可以选择通过Schedulers.from（Executor）将现有的Executor（及其子类型，如ExecutorService）包装到Scheduler中。例如，这可以用于具有更大但仍然固定的线程池（与calculate（）和io（）不同）。
+
+最后的Thread.sleep（2000）不是偶然的。在RxJava中，默认调度程序在守护程序线程上运行，这意味着一旦Java主线程退出，它们都会停止并且后台计算可能永远不会发生。在此示例情况下休眠一段时间，您可以在控制台上查看流的输出，并留出时间。
 
 
+##### 流的并发
+RxJava中的流本质上是顺序分割为可以彼此同时运行的处理阶段：
+```java
+Flowable.range(1, 10)
+  .observeOn(Schedulers.computation())
+  .map(v -> v * v)
+  .blockingSubscribe(System.out::println);
+```
+此示例流在计算调度程序上将数字从1到10求平方，并在“主”线程上使用结果（更准确地说，是blockingSubscribe的调用者线程）。但是，lambda v  - > v * v不会并行运行此流程;它一个接一个地在同一个计算线程上接收值1到10。
+
+
+##### 并行处理
+并行处理数字1到10涉及更多：
+
+```java
+Flowable.range(1, 10)
+  .flatMap(v ->
+      Flowable.just(v)
+        .subscribeOn(Schedulers.computation())
+        .map(w -> w * w)
+  )
+  .blockingSubscribe(System.out::println);
+```
+
+实际上，RxJava中的并行性意味着运行独立流并将其结果合并回单个流。运算符flatMap通过首先将1到10中的每个数字映射到它自己的单个Flowable，运行它们并合并计算结果的平方来完成此操作。
+
+但请注意，flatMap不保证任何顺序，内部流的最终结果可能最终交错。还有其他操作符：
+
+- concatMap，一次映射并运行一个内部流程
+- concatMapEager“一次”运行所有内部流，但输出流将按照创建内部流的顺序。
+
+##### 依赖衍生流
+
+flatMap是一个功能强大的运算符，可以在很多情况下提供帮助。例如，给定一个返回Flowable的服务，我们想要使用第一个服务发出的值调用另一个服务：
+```java
+Flowable<Inventory> inventorySource = warehouse.getInventoryAsync();
+
+inventorySource.flatMap(inventoryItem ->
+    erp.getDemandAsync(inventoryItem.getId())
+    .map(demand 
+        -> System.out.println("Item " + inventoryItem.getName() + " has demand " + demand));
+  )
+  .subscribe();
+```
+#### 依赖
+有时，当一个item可用时，人们希望对其执行一些依赖计算。这有时被称为延续，并且取决于应该发生什么以及涉及什么类型，可能涉及各种操作员来完成。
+
+##### 依赖
+最典型的情况是给出一个值，调用另一个服务，等待并继续其结果：
+
+```java
+service.apiCall()
+.flatMap(value -> service.anotherApiCall(value))
+.flatMap(next -> service.finalCall(next))
+```
+
+通常情况下，后面的序列也需要来自前面Map中的值。这可以通过将外部flatMap移动到前一个flatMap的内部部分来实现，例如：
+
+```java
+service.apiCall()
+.flatMap(value ->
+    service.anotherApiCall(value)
+    .flatMap(next -> service.finalCallBoth(value, next))
+)
+```
+这里，value将在内部flatMap中可用，由lambda变量捕获提供。
+
+##### 无依赖
+在其他场景中，第一个源/数据流的结果是无关紧要的，并且人们希望继续使用准独立的另一个源。这里，flatMap也可以
+
+```java
+Observable continued = sourceObservable.flatMapSingle(ignored -> someSingleSource)
+continued.map(v -> v.toString())
+  .subscribe(System.out::println, Throwable::printStackTrace);
+```
+但是，在这种情况下，延续仍然是Observable而不是可能更合适的Single。（这是可以理解的，因为从flatMapSingle的角度来看，sourceObservable是一个多值源，因此映射也可能导致多个值）。
 
 
 
