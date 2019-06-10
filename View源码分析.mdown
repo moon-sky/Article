@@ -1,0 +1,5 @@
+### View源码分析
+这个类代表用户界面组建的基本模块，View在屏幕上面占据一块正方形区域同时负责绘制和事件处理。View是所有widget的基类，而widget就是那些用户交互UI控件（button、text区域等），android.View.ViewGroup的子类是所有layouts的基类，而layout是包裹这些view或者ViewGroups的不可见容器，同时会定义layout的属性。
+
+
+一个window中的所有view都是被排列在一个视图树上面，你可以通过代码或者指定拥有多视图树的一个或者多个xml布局添加。在android中有很多view的子类专门作为控制类或者显示文本、图片、或者其他的内容
