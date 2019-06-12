@@ -1,5 +1,38 @@
-### View源码分析
+# View源码分析
 这个类代表用户界面组建的基本模块，View在屏幕上面占据一块正方形区域同时负责绘制和事件处理。View是所有widget的基类，而widget就是那些用户交互UI控件（button、text区域等），android.View.ViewGroup的子类是所有layouts的基类，而layout是包裹这些view或者ViewGroups的不可见容器，同时会定义layout的属性。
 
+## View的使用
+一个window中的所有view都是被排列在一个视图树上面，你可以通过代码或者指定拥有多视图树的一个或者多个xml布局添加。在android中有很多view的子类专门作为控制类或者显示文本、图片、或者其他的内容。
 
-一个window中的所有view都是被排列在一个视图树上面，你可以通过代码或者指定拥有多视图树的一个或者多个xml布局添加。在android中有很多view的子类专门作为控制类或者显示文本、图片、或者其他的内容
+在创建视图树以后，通常有一些通用操作你需要关心。
+
+- **设置属性：**举一个设置TextView的文本的例子，随着view不同的子类设置文本的方法和可用属性也有很多不同，需要注意的是这些在xml布局文件中设置的属性，在编译期间被获取。
+- **设置焦点** 该框架会不断的移动focus用于响应用户的输入，可以通过调用requestFocus()来强制聚焦在一个view上面。
+- **设置监听** Views允许客户设置监听器，这样就可以在view发生一些用户关心的事件时通知用户。举例：所有的view都允许你监听view的焦点的丢失或者获取，你可以通过调用setOnFocusChangeListener(android.view.View.OnFocusChangeListener)来注册监听。其他的view的子类拥有很多专属的监听接口，例如，Button就暴露了一个当用户点击button的事件监听。
+- **设置是否可见：**你可以通过调用setVisibility(int)来隐藏或者显示一个view
+
+*注意：Android Framework负责view的测量、布局和绘制。你不可以调用以上三个方法（measure、layout\draw）除非你是用于继承一个ViewGroup*
+
+## 实现自定义View
+如果要实现自定义View，你通常需要复写一些framework会调用的方法，你不需要复现下面的所有方法，实际上，你可以只复写onDraw(android.graphics.Canvas)
+
+|目录|方法|描述
+|---|---|---
+|构建|构造函数|第一种类型的构造器，用于通过代码创建View的时候调用，另外一种类型的构造器用于当view是通过xml布局创建时候的调用。第二种类型需要解析和应用定义在布局文件中的view的属性|
+||onFinishInflate()|当一个view以及他的所有子view完成渲染的时候调用该方法
+|布局|onMeasure(int,int)|用于确定一个view以及他所有子view的所需的尺寸大小时调用
+||onLayout(boolean,int,int,int,int)|当一个view分配大小和确定他的子view的位置时候调用
+||onSizeChanged(int,int,int,int)|当一个view的尺寸大小发生变化时调用
+|绘制|onDraw(android.graphics.Canvas)|当view需要在屏幕上面渲染它的内容时调用
+|事件处理|onKeyDown(int, android.view.KeyEvent)|当物理键事件被触发时调用
+||onKeyUp(int, android.view.KeyEvent)|当物理键松开手时被调用
+||onTrackballEvent(android.view.MotionEvent)|当轨迹球运动事件触发时调用
+||onTouchEvent(android.view.MotionEvent)|当触摸屏上触发动作时调用
+|焦点|onFocusChanged(boolean, int, android.graphics.Rect)|当一个view获得或者失去焦点时触发
+||onWindowFocusChanged(boolean)|当view所在的窗口失去或者获得焦点时触发
+|附加|onAttachedToWindow()|当一个view被附加到一个windows触发
+||onDetachedFromWindow()|当一个view与window解除绑定的时候触发
+||onWindowVisibilityChanged(int)|当包含这个view的Windows可见属性发生变化时候调用
+
+
+

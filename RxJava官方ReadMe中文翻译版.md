@@ -243,7 +243,53 @@ Observable continued = sourceObservable.flatMapSingle(ignored -> someSingleSourc
 continued.map(v -> v.toString())
   .subscribe(System.out::println, Throwable::printStackTrace);
 ```
-但是，在这种情况下，延续仍然是Observable而不是可能更合适的Single。（这是可以理解的，因为从flatMapSingle的角度来看，sourceObservable是一个多值源，因此映射也可能导致多个值）。
+但是，在这种情况下，继续使用Observable而不是可能更合适的Single。（这是可以理解的，因为从flatMapSingle的角度来看，sourceObservable是一个多值源，因此映射也可能导致多个值）。
+
+通常使用Completable作为介体及其运算符，然后继续使用其他东西，这种方式更具表现力（以及更低的开销）：
+```java
+sourceObservable
+  .ignoreElements()           // returns Completable
+  .andThen(someSingleSource)
+  .map(v -> v.toString())
+```
+sourceObservable和someSingleSource之间唯一的依赖关系是前者应该正常完成，以便消耗后者。
+
+##### 递延依赖
+有时，前一个序列和新序列之间存在隐含的数据依赖性，由于某种原因，它不会流经“常规通道”。人们倾向于像下面这样写：
+
+```java
+AtomicInteger count = new AtomicInteger();
+
+Observable.range(1, 10)
+  .doOnNext(ignored -> count.incrementAndGet())
+  .ignoreElements()
+  .andThen(Single.just(count.get()))
+  .subscribe(System.out::println);
+```
+不幸的是，这会打印0，因为Single.just（count.get（））是在汇编时计算的当时数据流尚未运行。我们需要一些推迟评估此Single源的内容直到运行时也就是main source 完成时：
+```java
+AtomicInteger count = new AtomicInteger();
+
+Observable.range(1, 10)
+  .doOnNext(ignored -> count.incrementAndGet())
+  .ignoreElements()
+  .andThen(Single.defer(() -> Single.just(count.get())))
+  .subscribe(System.out::println);
+```
+或者
+```java
+AtomicInteger count = new AtomicInteger();
+
+Observable.range(1, 10)
+  .doOnNext(ignored -> count.incrementAndGet())
+  .ignoreElements()
+  .andThen(Single.fromCallable(() -> count.get()))
+  .subscribe(System.out::println);
+```
+#### 类型转换
+
+
+
 
 
 

@@ -1,0 +1,16 @@
+# DexGuard vs. ProGuard
+>原文链接[https://www.guardsquare.com/en/blog/dexguard-vs-proguard](https://www.guardsquare.com/en/blog/dexguard-vs-proguard)
+
+DexGuard基于ProGuard。这就是为什么升级到DexGuard如此容易的原因。但这两种产品却提供的功能差异很大。ProGuard是Java字节码的通用优化器，而DexGuard为Android应用程序提供高级保护。在本博客中，您将找到ProGuard和DexGuard之间差异的概述。
+
+### ProGuard是Java字节码的通用优化器。DexGuard是一款专门用于保护Android应用程序的工具。
+ProGuard是Java字节码的通用优化器。它使您能够压缩，优化和混淆桌面应用程序，嵌入式应用程序和移动应用程序（Android）。另一方面，DexGuard专门用于保护和优化Android应用程序。DexGuard提供的多层保护适用于应用了分布式和快速更新的App。此外，DexGuard还提供可帮助您充分利用Android平台的功能。它配备了针对Android运行时和公共库（Google Play服务，Dagger，Realm，SQLCipher等）的调整配置，并自动拆分超出格式（MultiDex）规定的大小限制的DEX文件。
+### ProGuard提供针对静态分析的基本保护。DexGuard可保护应用程序免受静态和动态分析的影响。
+在尝试对应用程序进行逆向工程时，黑客通常会将两种方法结合他们尝试使用反编译器（静态分析）访问应用程序的源代码，并在运行时监视应用程序的行为（动态分析）。ProGuard仅提供针对静态分析的基本保护，而DexGuard可保护应用程序免受静态和动态分析的影响。DexGuard不仅使用多种混淆和加密技术来强化应用程序的源代码，还将一系列运行时安全机制（运行时应用程序自我保护）集成到其中。这些机制检查应用程序及其运行环境的完整性，并使应用程序能够在检测到可疑活动时做出反应。
+### ProGuard提供最小的混淆。DexGuard应用多层加密和混淆。
+ProGuard和DexGuard都强化了应用程序代码，以防止它们被反编译，但它们的所做的程度是不同的。ProGuard以名称混淆的形式提供基本保护。DexGuard不仅模糊了类，字段和方法的名称，还模糊了代码中的算术和逻辑表达式以及方法内部代码的控制流。此外，DexGuard会对字符串和类进行加密，并为访问敏感的API添加反射。最终提供一个被保护很好的应用。
+
+### ProGuard专注于字节码。DexGuard处理应用程序的所有组件。
+虽然ProGuard的操作仅限于Java应用程序的字节码，但DexGuard提供360度保护。除了Dalvik字节码，它还优化、混淆和加密清单文件，native 库，资源，资源文件和assets文件。
+### ProGuard是一个开源工具。DexGuard是一种商业级企业级产品
+ProGuard可以免费下载和使用，以处理您的商业和非商业应用程序。有关设置ProGuard所需的所有信息，请参见在线手册。DexGuard是一种商业产品。许可证允许您使用DexGuard，并允许您通过经验丰富的工程师团队帮助你设置和配置软件。
